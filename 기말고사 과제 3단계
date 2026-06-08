@@ -1,0 +1,19 @@
+# 필수 라이브러리 설치
+!pip install streamlit pyngrok -q
+
+# ngrok 인증 토큰 설정 (본인의 토큰을 입력하세요)
+# 토큰 입력 없이 실행 시 오류가 발생하거나 제한이 걸릴 수 있습니다.
+import os
+from pyngrok import ngrok
+
+# 여기에 본인의 ngrok 토큰 입력
+NGROK_TOKEN = "YOUR_NGROK_AUTH_TOKEN" 
+ngrok.set_auth_token(NGROK_TOKEN)
+
+# 백그라운드에서 Streamlit 실행
+import subprocess
+process = subprocess.Popen(["streamlit", "run", "app.py", "--server.port", "8501"])
+
+# ngrok 터널 열기 (포트 8501)
+public_url = ngrok.connect(8501, proto="http")
+print("⚡ 외부 접속 가능한 Public URL:", public_url.public_url)
