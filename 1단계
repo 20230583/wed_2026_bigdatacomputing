@@ -1,0 +1,84 @@
+import pandas as pd
+import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, PolynomialFeatures
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_squared_error, r2_score
+import joblib
+
+# [조건 1] 데이터 로드 및 전처리
+url = "https://github.com/dongupak/DataML/raw/main/csv/life_expectancy.csv"
+df = pd.read_csv(url).dropna()
+
+# 자율 변수 선택 (Schooling 제외, 최소 3개 이상)
+features = ['Adult Mortality', 'BMI', 'GDP']
+target = 'Life expectancy'
+
+X = df[features]
+y = df[target]
+
+# 80/20 분할 후, 과대적합 유도를 위해 훈련 샘플 50개 무작위 추출
+X_train_full, X_test, y_train_full, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+train_sample = X_train_full.sample(n=50, random_state=42)
+X_train = train_sample
+y_train = y_train_full.loc[train_sample.index]
+
+# [조건 2] 파이프라인 기반 모델 3종 생성 및 학습
+# Model 1: Linear
+model_linear = Pipeline([
+    ('scaler', StandardScaler()),
+    ('regressor', LinearRegression())
+])
+
+# Model 2: Poly (3차 다항 회귀 - 규제 없음)
+model_poly = Pipeline([
+    ('scaler', StandardScaler()),
+    ('poly', PolynomialFeatures(degree=3)),
+    ('regressor', LinearRegression())
+])
+
+# Model 3: Ridge (3차 다항 회귀 + 릿지 규제)
+model_ridge = Pipeline([
+    ('scaler', StandardScaler()),
+    ('poly', PolynomialFeatures(degree=3)),
+    ('regressor', Ridge(alpha=1.0))
+])
+
+# 모델 학습
+model_linear.fit(X_train, y_train)
+model_poly.fit(X_train, y_train)
+model_ridge.fit(X_train, y_train)
+
+# 모델 파일(.pkl) 저장
+joblib.dump(model_linear, 'model_linear.pkl')
+joblib.dump(model_poly, 'model_poly.pkl')
+joblib.dump(model_ridge, 'model_ridge.pkl')
+
+# 성능 데이터 미리 계산하여 저장 (app.py에서 활용 목적 및 검증용)
+def get_metrics(model, name):
+    train_pred = model.predict(X_train)
+    test_pred = model.predict(X_test)
+    
+    # 특성 개수(Complexity) 계산
+    if 'poly' in model.named_steps:
+        complexity = model.named_steps['poly'].n_output_features_
+    else:
+        complexity = X_train.shape[1]
+        
+    return {
+        'Model': name,
+        'Complexity': complexity,
+        'Train R2': r2_score(y_train, train_pred),
+        'Test R2': r2_score(y_test, test_pred),
+        'Train MSE': mean_squared_error(y_train, train_pred),
+        'Test MSE': mean_squared_error(y_test, test_pred)
+    }
+
+metrics_df = pd.DataFrame([
+    get_metrics(model_linear, 'Linear'),
+    get_metrics(model_poly, 'Poly (Degree=3)'),
+    get_metrics(model_ridge, 'Ridge (Degree=3, alpha=1.0)')
+])
+metrics_df.to_csv('metrics.csv', index=False)
+print("모델 학습 및 저장 완료!")
