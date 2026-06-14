@@ -1,0 +1,4 @@
+Model,Train R2,Test R2,Train MSE,Test MSE,Complexity
+Linear,0.7337,0.5832,29.1993,29.6014,5
+Poly,1.0,-770.0744,0.0,54763.6222,55
+Ridge,0.9536,0.3643,5.0854,45.1486,55
